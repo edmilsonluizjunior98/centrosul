@@ -1,3 +1,22 @@
 [theme]
-base = "system"
-base = "ligth"
+# Força o tema claro (resolve o problema do Dark Mode de vez)
+base = "light"
+
+# Cor principal (Botões, Sliders, Foco) - Usando o Azul da Adimplência
+primaryColor = "#2980B9"
+
+# Cor do Fundo da Página (Branco absoluto)
+backgroundColor = "#FFFFFF"
+
+# Cor do Fundo da Barra Lateral (Cinza bem claro para contraste)
+secondaryBackgroundColor = "#F0F2F6"
+
+# Cor do Texto (Preto absoluto)
+textColor = "#000000"
+
+# Fonte (Padrão executivo)
+font = "sans serif"
+
+[server]
+# Remove o menu de "hambúrguer" e rodapé para ficar mais limpo (modo quiosque)
+headless = true
