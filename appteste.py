@@ -15,7 +15,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ==============================================================================
 # 1. ESTILO
 # ==============================================================================
-st.set_page_config(page_title="Gestão Cartão de Todos", layout="wide", page_icon="💼")
+st.set_page_config(page_title="Gestão Cartão de Todos",  layout="wide", page_icon="💼")
 
 COR_VENDAS = "#F1C40F"       # Amarelo
 COR_ADIMPLENCIA = "#2980B9"  # Azul
