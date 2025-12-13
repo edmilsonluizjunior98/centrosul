@@ -19,31 +19,43 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ==============================================================================
 st.set_page_config(page_title="Gestão Cartão de Todos", layout="wide", page_icon="💼")
 
-COR_VENDAS = "#F1C40F"       # Amarelo
-COR_ADIMPLENCIA = "#2980B9"  # Azul
-COR_DESFILIACAO = "#C0392B"  # Vermelho
-COR_QIA = "#27AE60"          # Verde
-COR_ALERTA = "#E74C3C"       # Vermelho Alerta
+# CORES PADRÃO (Visão Única)
+COR_VENDAS_PADRAO = "#F59E0B"       # Amarelo/Laranja
+COR_DESFILIACAO_PADRAO = "#DC2626"  # Vermelho
+COR_SALDO_PADRAO = "#4ade80"        # Verde Suave Sólido (para texto/marcadores)
+COR_SALDO_TRANSPARENTE = "rgba(74, 222, 128, 0.5)" # Verde Suave Transparente (para a linha)
+COR_QIA = "#16A34A"                 # Verde Folha
+COR_ADIMPLENCIA = "#2563EB"         # Azul Royal
+
+# PALETA DE CORES (Comparação)
+PALETA_CORES = [
+    "#2563EB", # Azul
+    "#D97706", # Laranja
+    "#7C3AED", # Roxo
+    "#059669", # Verde
+    "#DB2777", # Rosa
+    "#0891B2"  # Ciano
+]
 
 st.markdown(f"""
 <style>
     /* Estilo dos KPIs */
-    .kpi-card {{ background-color: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; height: 160px; display: flex; flex-direction: column; justify-content: center; }}
+    .kpi-card {{ background-color: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; height: 160px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #eee; }}
     
-    .kpi-value {{ font-size: 26px; font-weight: 800; color: #333; margin-bottom: 5px; }}
-    .kpi-title {{ font-size: 13px; color: #666; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; }}
-    .kpi-sub {{ font-size: 13px; color: #777; border-top: 1px solid #eee; padding-top: 5px; margin-top: 5px; }}
+    .kpi-value {{ font-size: 26px; font-weight: 700; color: #1e293b; margin-bottom: 5px; }}
+    .kpi-title {{ font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 10px; letter-spacing: 0.5px; }}
+    .kpi-sub {{ font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 5px; }}
     
-    .border-qia {{ border-top: 5px solid {COR_QIA}; }}
-    .border-vendas {{ border-top: 5px solid {COR_VENDAS}; }}
-    .border-adimp {{ border-top: 5px solid {COR_ADIMPLENCIA}; }}
-    .border-desf {{ border-top: 5px solid {COR_DESFILIACAO}; }}
+    .border-qia {{ border-top: 4px solid {COR_QIA}; }}
+    .border-vendas {{ border-top: 4px solid {COR_VENDAS_PADRAO}; }}
+    .border-adimp {{ border-top: 4px solid {COR_ADIMPLENCIA}; }}
+    .border-desf {{ border-top: 4px solid {COR_DESFILIACAO_PADRAO}; }}
 
     /* Cards de Destaque */
-    .destaque-card {{ background-color: #f0f9ff; border-left: 5px solid #0f172a; padding: 15px; border-radius: 4px; margin-bottom: 10px; }}
-    .atencao-card {{ background-color: #fef2f2; border-left: 5px solid #ef4444; padding: 15px; border-radius: 4px; margin-bottom: 10px; }}
-    .card-label {{ font-weight: 700; color: #333; font-size: 14px; display: block; }}
-    .card-value {{ font-size: 13px; color: #555; }}
+    .destaque-card {{ background-color: #f8fafc; border-left: 4px solid #334155; padding: 15px; border-radius: 4px; margin-bottom: 10px; }}
+    .atencao-card {{ background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; border-radius: 4px; margin-bottom: 10px; }}
+    .card-label {{ font-weight: 600; color: #334155; font-size: 14px; display: block; }}
+    .card-value {{ font-size: 13px; color: #64748b; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -203,74 +215,125 @@ with tab_dash:
         st.markdown("---")
 
         # --- BLOCO 2: GRÁFICOS ---
-        mapa_cores = {f: c for f, c in zip(franquias_sel, itertools.cycle(px.colors.qualitative.Bold))}
         modo_comparacao = len(franquias_sel) > 1
         
-        # LAYOUT CLEAN (Estilo Apple/Minimalista)
+        # LAYOUT CLEAN
         layout_clean = dict(
             separators=",.", 
             template="plotly_white", 
             hovermode="x unified",
             yaxis=dict(showgrid=False, showticklabels=False, visible=False),
-            xaxis=dict(showgrid=False),
-            margin=dict(t=40, b=40, l=10, r=10) # Margens otimizadas
+            xaxis=dict(showgrid=False, tickfont=dict(color="#64748b")), 
+            margin=dict(t=40, b=40, l=10, r=10),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)"
         )
 
-        # 1. Gráfico Combinado: Vendas (Fundo) + Desfiliação (Frente) + Saldo (Linha)
-        st.markdown("##### 📉 Entradas vs Saídas vs Saldo")
-        fig1 = go.Figure()
-        
-        for f in franquias_sel:
-            d = df_viz[df_viz['franquia'] == f].copy()
-            d['saldo'] = d['vendas'] - d['desfiliacao']
+        # 1. GRÁFICO PRINCIPAL
+        if not modo_comparacao:
+            # === MODO 1: VISÃO ÚNICA (BARRAS LADO A LADO + SALDO) ===
+            st.markdown("##### 📉 Fluxo de Contratos (Vendas vs Saídas)")
+            fig1 = go.Figure()
             
-            # A) Vendas (AMARELO - Fundo)
-            fig1.add_trace(go.Bar(
-                x=d['data'], y=d['vendas'], name=f"{f} - Vendas", 
-                marker_color=COR_VENDAS, opacity=1.0, 
-                text=d['vendas'].apply(fmt), textposition='outside', # Número ACIMA da coluna
-                hovertemplate='Vendas: %{y:,.0f}<extra></extra>'
-            ))
-            
-            # B) Desfiliação (VERMELHO - Sobreposto/Dentro)
-            fig1.add_trace(go.Bar(
-                x=d['data'], y=d['desfiliacao'], name=f"{f} - Desfiliação", 
-                marker_color=COR_DESFILIACAO, opacity=1.0, 
-                text=d['desfiliacao'].apply(fmt), textposition='auto', # Dentro se couber
-                textfont=dict(color='white'),
-                hovertemplate='Saídas: %{y:,.0f}<extra></extra>'
-            ))
+            for f in franquias_sel:
+                d = df_viz[df_viz['franquia'] == f].copy()
+                d['saldo'] = d['vendas'] - d['desfiliacao']
+                
+                # Vendas (Amarelo)
+                fig1.add_trace(go.Bar(
+                    x=d['mes_exibicao'], y=d['vendas'], name=f"{f} - Vendas", 
+                    marker_color=COR_VENDAS_PADRAO, opacity=0.9, 
+                    text=d['vendas'].apply(fmt), textposition='outside',
+                    textfont=dict(size=10, color=COR_VENDAS_PADRAO), # Cor do texto = Cor da barra
+                    hovertemplate='Vendas: %{y:,.0f}<extra></extra>'
+                ))
+                
+                # Desfiliação (Vermelho)
+                fig1.add_trace(go.Bar(
+                    x=d['mes_exibicao'], y=d['desfiliacao'], name=f"{f} - Desfiliação", 
+                    marker_color=COR_DESFILIACAO_PADRAO, opacity=0.9,
+                    text=d['desfiliacao'].apply(fmt), textposition='outside',
+                    textfont=dict(size=10, color=COR_DESFILIACAO_PADRAO), # Cor do texto = Cor da barra
+                    hovertemplate='Saídas: %{y:,.0f}<extra></extra>'
+                ))
 
-            # C) Saldo (LINHA VERDE - Por Cima)
-            fig1.add_trace(go.Scatter(
-                x=d['data'], y=d['saldo'], name=f"{f} - Saldo Líquido", 
-                line=dict(color=COR_QIA, width=3, shape='spline'),
-                mode='lines+markers', # Só bolinha e linha, sem texto poluindo
-                hovertemplate='Saldo: %{y:+,.0f}<extra></extra>'
-            ))
+                # Saldo (Linha Verde Suave com Transparência)
+                fig1.add_trace(go.Scatter(
+                    x=d['mes_exibicao'], y=d['saldo'], name=f"{f} - Saldo Líquido", 
+                    # Use a cor transparente para a linha
+                    line=dict(color=COR_SALDO_TRANSPARENTE, width=3, shape='spline'), 
+                    text=d['saldo'].apply(lambda x: f"{x:+,.0f}"), 
+                    mode='lines+markers+text',
+                    textposition="top center",
+                    # Mantenha o texto e os marcadores sólidos para leitura
+                    textfont=dict(size=11, color=COR_SALDO_PADRAO, weight="bold"), 
+                    marker=dict(size=6, color=COR_SALDO_PADRAO), 
+                    hovertemplate='Saldo: %{y:+,.0f}<extra></extra>'
+                ))
             
-        fig1.update_layout(
-            height=450, 
-            **layout_clean, 
-            barmode='overlay', # MÁGICA: Sobrepõe as barras (Vermelho fica na frente do Amarelo)
-            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
-        )
+            fig1.update_layout(
+                height=450, 
+                **layout_clean, 
+                barmode='group', # Lado a lado
+                legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(size=11, color="#555"))
+            )
+
+        else:
+            # === MODO 2: VISÃO COMPARATIVA (CORES + HACHURA + TEXTO DISCRETO) ===
+            st.markdown("##### 📈 Comparativo de Vendas vs Desfiliações")
+            fig1 = go.Figure()
+            
+            cores_ciclo = itertools.cycle(PALETA_CORES)
+            
+            for f in franquias_sel:
+                d = df_viz[df_viz['franquia'] == f].copy()
+                cor_franquia = next(cores_ciclo)
+                
+                # Vendas (Cor Sólida)
+                fig1.add_trace(go.Bar(
+                    x=d['mes_exibicao'], y=d['vendas'], name=f"{f} - Vendas", 
+                    marker_color=cor_franquia, opacity=1.0, 
+                    text=d['vendas'].apply(fmt), textposition='outside', 
+                    textfont=dict(size=9, color='#333'),
+                    hovertemplate=f'{f}<br>Vendas: %{{y:,.0f}}<extra></extra>'
+                ))
+                
+                # Desfiliação (Mesma Cor + HACHURA)
+                fig1.add_trace(go.Bar(
+                    x=d['mes_exibicao'], y=d['desfiliacao'], name=f"{f} - Desfiliação", 
+                    marker=dict(color=cor_franquia, pattern_shape="/"), # Hachura
+                    opacity=0.6,
+                    text=d['desfiliacao'].apply(fmt), textposition='outside',
+                    textfont=dict(size=9, color='#333'),
+                    hovertemplate=f'{f}<br>Saídas: %{{y:,.0f}}<extra></extra>'
+                ))
+            
+            fig1.update_layout(
+                height=450, 
+                **layout_clean, 
+                barmode='group', # Barras lado a lado
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=11, color="#555"))
+            )
+            
         st.plotly_chart(fig1, use_container_width=True)
 
         # 2. Gráfico QIA (Full Width)
         st.markdown("##### 🌱 Evolução da Base (QIA)")
         fig2 = go.Figure()
+        cores_ciclo_qia = itertools.cycle(PALETA_CORES if modo_comparacao else [COR_QIA])
+        
         for f in franquias_sel:
             d = df_viz[df_viz['franquia'] == f].copy()
-            c = mapa_cores[f] if modo_comparacao else COR_QIA
+            c = next(cores_ciclo_qia)
             
             fig2.add_trace(go.Scatter(
-                x=d['data'], y=d['qia'], name=f, 
+                x=d['mes_exibicao'], y=d['qia'], name=f, 
                 line=dict(color=c, width=3, shape='spline'),
                 text=d['qia'].apply(fmt),
                 mode='lines+markers+text' if not modo_comparacao else 'lines',
                 textposition="top center",
-                textfont=dict(size=10, color='gray'),
+                textfont=dict(size=10, color='#444'),
+                marker=dict(size=6),
                 cliponaxis=False,
                 hovertemplate='QIA: %{y:,.0f}<extra></extra>' 
             ))
@@ -280,17 +343,20 @@ with tab_dash:
         # 3. Gráfico Adimplência (Full Width)
         st.markdown("##### 💰 Qualidade Financeira (Adimplência %)")
         fig3 = go.Figure()
+        cores_ciclo_adimp = itertools.cycle(PALETA_CORES if modo_comparacao else [COR_ADIMPLENCIA])
+        
         for f in franquias_sel:
             d = df_viz[df_viz['franquia'] == f]
-            c = mapa_cores[f] if modo_comparacao else COR_ADIMPLENCIA
+            c = next(cores_ciclo_adimp)
             
             fig3.add_trace(go.Scatter(
-                x=d['data'], y=d['adimplencia'], name=f, 
-                line=dict(color=c, width=4, shape='spline'),
+                x=d['mes_exibicao'], y=d['adimplencia'], name=f, 
+                line=dict(color=c, width=3, shape='spline'),
                 text=d['adimplencia'].apply(lambda x: fmt_dec(x) + "%"),
                 mode='lines+markers+text' if not modo_comparacao else 'lines',
                 textposition="top center",
-                textfont=dict(size=10),
+                textfont=dict(size=10, color='#444'),
+                marker=dict(size=6),
                 cliponaxis=False,
                 hovertemplate='Adimp: %{y:,.2f}%<extra></extra>' 
             ))
@@ -445,4 +511,3 @@ with tab_ia:
         st.download_button("📥 Baixar Relatório", data=html_final, file_name="Relatorio.html", mime="text/html")
     with c_prev:
         components.html(html_final, height=500, scrolling=True)
-    
