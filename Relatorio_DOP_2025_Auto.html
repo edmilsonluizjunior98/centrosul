@@ -1,0 +1,97 @@
+
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Relatório Automático DOP</title>
+        <style>
+            :root { --primary: #2c3e50; --green: #27ae60; --red: #c0392b; --blue: #2980b9; --bg: #f4f6f7; }
+            body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #333; padding: 20px; line-height: 1.6; }
+            .container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+            h1 { color: var(--primary); text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 30px 0; }
+            .kpi-card { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border-top: 4px solid #ddd; }
+            .kpi-val { font-size: 1.8em; font-weight: bold; display: block; }
+            .kpi-lbl { font-size: 0.8em; text-transform: uppercase; color: #777; }
+            .section { margin-top: 40px; padding: 20px; border-radius: 8px; background: #fff; border: 1px solid #eee; }
+            .alert-box { background: #fff3cd; color: #856404; padding: 15px; border-left: 5px solid #ffeeba; margin: 15px 0; }
+            .success-box { background: #d4edda; color: #155724; padding: 15px; border-left: 5px solid #c3e6cb; margin: 15px 0; }
+            .bar-container { background: #eee; height: 20px; border-radius: 10px; margin-top: 5px; overflow: hidden; }
+            .bar-fill { height: 100%; border-radius: 10px; }
+            .footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #aaa; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Relatório de Performance DOP</h1>
+            <p style="text-align: center; color: #777;">Gerado Automaticamente em 12/12/2025</p>
+
+            <div class="kpi-grid">
+                <div class="kpi-card" style="border-color: var(--blue);">
+                    <span class="kpi-val">2,072,680</span>
+                    <span class="kpi-lbl">Base Ativa (QIA)</span>
+                </div>
+                <div class="kpi-card" style="border-color: var(--green);">
+                    <span class="kpi-val">+106,730</span>
+                    <span class="kpi-lbl">Crescimento Ano</span>
+                </div>
+                <div class="kpi-card" style="border-color: #f1c40f;">
+                    <span class="kpi-val">766,858</span>
+                    <span class="kpi-lbl">Vendas Totais</span>
+                </div>
+                <div class="kpi-card" style="border-color: var(--red);">
+                    <span class="kpi-val">539,540</span>
+                    <span class="kpi-lbl">Desfiliações</span>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 style="color: var(--primary);">1. Análise de Eficiência</h2>
+                <div class="alert-box">
+                    ⚠️ <strong>Alerta Crítico:</strong> O balde está furado. Para cada venda realizada, a rede perde quase 1 cliente (Ratio: 1.4).
+                </div>
+                <table style="width:100%; margin-top:20px;">
+                    <tr>
+                        <td width="30%"><strong>Força de Vendas</strong></td>
+                        <td width="70%"><div class="bar-container"><div class="bar-fill" style="width: 100%; background: var(--green);"></div></div></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Perda (Churn)</strong></td>
+                        <td><div class="bar-container"><div class="bar-fill" style="width: 70%; background: var(--red);"></div></div></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2 style="color: var(--primary);">2. Destaques e Oportunidades</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="success-box">
+                        <h3>🏆 Melhor Performance</h3>
+                        <p>A unidade <strong>CENTROSUL</strong> liderou o crescimento real com <strong>+53,365</strong> novos contratos líquidos.</p>
+                        <hr style="border-top: 1px solid #c3e6cb;">
+                        <p><strong>Finanças de Ouro:</strong> A unidade <strong>PASSO FUNDO</strong> manteve a melhor adimplência média (98.9%).</p>
+                    </div>
+
+                    <div style="background: #fff5f5; border-left: 5px solid #ffcccc; color: #990000; padding: 15px;">
+                        <h3>⚠️ Pontos de Atenção</h3>
+                        <p><strong>Churn Elevado:</strong> A unidade <strong>CENTROSUL</strong> teve o maior volume absoluto de saídas (269,770).</p>
+                        <hr style="border-top: 1px solid #ffcccc;">
+                        <p><strong>Risco Financeiro:</strong> A unidade <strong>MYTECH</strong> registrou a menor média de adimplência (0.0%).</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 style="color: var(--primary);">3. Sazonalidade</h2>
+                <p>O melhor momento comercial do ano foi em <strong>April/2025 (90,340 vendas)</strong>.</p>
+            </div>
+
+            <div class="footer">
+                Relatório gerado pelo Assistente de Gestão (Python + HTML).
+            </div>
+        </div>
+    </body>
+    </html>
+    
