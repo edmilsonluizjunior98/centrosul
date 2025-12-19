@@ -22,19 +22,14 @@ st.set_page_config(page_title="Gestão Cartão de Todos", layout="wide", page_ic
 # CORES PADRÃO (Visão Única)
 COR_VENDAS_PADRAO = "#F59E0B"       # Amarelo/Laranja
 COR_DESFILIACAO_PADRAO = "#DC2626"  # Vermelho
-COR_SALDO_PADRAO = "#4ade80"        # Verde Suave Sólido (para texto/marcadores)
-COR_SALDO_TRANSPARENTE = "rgba(74, 222, 128, 0.5)" # Verde Suave Transparente (para a linha)
+COR_SALDO_PADRAO = "#4ade80"        # Verde Suave Sólido
+COR_SALDO_TRANSPARENTE = "rgba(74, 222, 128, 0.5)"
 COR_QIA = "#16A34A"                 # Verde Folha
 COR_ADIMPLENCIA = "#2563EB"         # Azul Royal
 
 # PALETA DE CORES (Comparação)
 PALETA_CORES = [
-    "#2563EB", # Azul
-    "#D97706", # Laranja
-    "#7C3AED", # Roxo
-    "#059669", # Verde
-    "#DB2777", # Rosa
-    "#0891B2"  # Ciano
+    "#2563EB", "#D97706", "#7C3AED", "#059669", "#DB2777", "#0891B2"
 ]
 
 st.markdown(f"""
@@ -91,7 +86,7 @@ def formatar_mes(data):
         return str(data)
 
 # ==============================================================================
-# 1. CARREGAMENTO DE DADOS (ONLINE)
+# 1. CARREGAMENTO DE DADOS (CORRIGIDO PARA EVITAR ERRO DE STRING/DUPLICATAS)
 # ==============================================================================
 @st.cache_data(ttl=300) 
 def carregar_dados():
@@ -103,17 +98,40 @@ def carregar_dados():
         try: df = pd.read_csv(io.StringIO(response.text), header=[0, 1], dtype=str, index_col=0)
         except: df = pd.read_csv(io.StringIO(response.text), sep=';', header=[0, 1], dtype=str, index_col=0)
         
-        df = df.stack(level=0, future_stack=True).reset_index()
+        # Ajuste no stack para evitar problemas de versão do Pandas
+        try:
+            df = df.stack(level=0, future_stack=True).reset_index()
+        except:
+            df = df.stack(level=0).reset_index()
         
+        # Limpeza e Padronização dos Nomes das Colunas
         new_cols = ['franquia', 'data']
         for c in df.columns[2:]:
             clean_c = unicodedata.normalize('NFKD', str(c)).encode('ASCII', 'ignore').decode('utf-8')
             clean_c = clean_c.lower().strip().replace(' ', '_').replace('(', '').replace(')', '').replace('%', 'perc')
+            
+            # Normalização forçada para evitar nomes duplicados ou estranhos
+            if 'adimp' in clean_c: clean_c = 'adimplencia'
+            elif 'venda' in clean_c: clean_c = 'vendas'
+            elif 'desf' in clean_c: clean_c = 'desfiliacao'
+            elif 'qia' in clean_c: clean_c = 'qia'
+            
             new_cols.append(clean_c)
+        
         df.columns = new_cols
         
-        for c in df.columns[2:]:
-            df[c] = df[c].apply(lambda x: float(str(x).strip().replace('%','').replace('.','').replace(',','.')) if str(x).strip() not in ['','-','nan'] else 0.0)
+        # --- CORREÇÃO CRÍTICA: REMOVER COLUNAS DUPLICADAS ---
+        # Se houver duas colunas 'vendas', remove a segunda
+        df = df.loc[:, ~df.columns.duplicated()]
+
+        # Conversão Numérica Segura
+        cols_numericas = ['vendas', 'desfiliacao', 'qia', 'adimplencia']
+        for c in cols_numericas:
+            if c in df.columns:
+                df[c] = df[c].apply(lambda x: float(str(x).strip().replace('%','').replace('.','').replace(',','.')) if str(x).strip() not in ['','-','nan'] else 0.0)
+            else:
+                # Se a coluna não existir, cria com zeros para não quebrar o código
+                df[c] = 0.0
             
         df['data'] = pd.to_datetime(df['data'], format='%Y/%m', errors='coerce')
         df = df.dropna(subset=['data']).sort_values('data')
@@ -124,7 +142,7 @@ def carregar_dados():
 
         return df
     except Exception as e:
-        st.error(f"⚠️ Erro de Conexão com a Planilha: {e}")
+        st.error(f"⚠️ Erro ao processar dados: {e}")
         return pd.DataFrame()
 
 df_completo = carregar_dados()
@@ -141,15 +159,18 @@ df_periodo = df_completo[(df_completo['data'] >= dt_ini) & (df_completo['data'] 
 
 # Filtro de Volume (excluindo Centrosul do calculo)
 df_calc_vol = df_periodo[df_periodo['franquia'] != 'CENTROSUL']
-vendas_por_franquia = df_calc_vol.groupby('franquia')['vendas'].sum()
-franquias_ativas = vendas_por_franquia[vendas_por_franquia >= 100].index.tolist()
+if not df_calc_vol.empty:
+    vendas_por_franquia = df_calc_vol.groupby('franquia')['vendas'].sum()
+    franquias_ativas = vendas_por_franquia[vendas_por_franquia >= 100].index.tolist()
+else:
+    franquias_ativas = []
 
 if 'CENTROSUL' in df_completo['franquia'].unique() and 'CENTROSUL' not in franquias_ativas:
     franquias_ativas.insert(0, 'CENTROSUL')
 
 if not franquias_ativas:
-    st.error("Sem dados suficientes no período.")
-    st.stop()
+    # Fallback se o filtro for muito restritivo
+    franquias_ativas = sorted(df_periodo['franquia'].unique())
 
 todas_opcoes = sorted(franquias_ativas)
 if 'CENTROSUL' in todas_opcoes: 
@@ -215,9 +236,9 @@ with tab_dash:
         st.markdown("---")
 
         # --- BLOCO 2: GRÁFICOS ---
+        mapa_cores = {f: c for f, c in zip(franquias_sel, itertools.cycle(PALETA_CORES))}
         modo_comparacao = len(franquias_sel) > 1
         
-        # LAYOUT CLEAN
         layout_clean = dict(
             separators=",.", 
             template="plotly_white", 
@@ -244,7 +265,7 @@ with tab_dash:
                     x=d['mes_exibicao'], y=d['vendas'], name=f"{f} - Vendas", 
                     marker_color=COR_VENDAS_PADRAO, opacity=0.9, 
                     text=d['vendas'].apply(fmt), textposition='outside',
-                    textfont=dict(size=10, color=COR_VENDAS_PADRAO), # Cor do texto = Cor da barra
+                    textfont=dict(size=10, color=COR_VENDAS_PADRAO), 
                     hovertemplate='Vendas: %{y:,.0f}<extra></extra>'
                 ))
                 
@@ -253,19 +274,17 @@ with tab_dash:
                     x=d['mes_exibicao'], y=d['desfiliacao'], name=f"{f} - Desfiliação", 
                     marker_color=COR_DESFILIACAO_PADRAO, opacity=0.9,
                     text=d['desfiliacao'].apply(fmt), textposition='outside',
-                    textfont=dict(size=10, color=COR_DESFILIACAO_PADRAO), # Cor do texto = Cor da barra
+                    textfont=dict(size=10, color=COR_DESFILIACAO_PADRAO),
                     hovertemplate='Saídas: %{y:,.0f}<extra></extra>'
                 ))
 
-                # Saldo (Linha Verde Suave com Transparência)
+                # Saldo (Linha Verde Suave)
                 fig1.add_trace(go.Scatter(
                     x=d['mes_exibicao'], y=d['saldo'], name=f"{f} - Saldo Líquido", 
-                    # Use a cor transparente para a linha
                     line=dict(color=COR_SALDO_TRANSPARENTE, width=3, shape='spline'), 
                     text=d['saldo'].apply(lambda x: f"{x:+,.0f}"), 
                     mode='lines+markers+text',
                     textposition="top center",
-                    # Mantenha o texto e os marcadores sólidos para leitura
                     textfont=dict(size=11, color=COR_SALDO_PADRAO, weight="bold"), 
                     marker=dict(size=6, color=COR_SALDO_PADRAO), 
                     hovertemplate='Saldo: %{y:+,.0f}<extra></extra>'
@@ -274,12 +293,12 @@ with tab_dash:
             fig1.update_layout(
                 height=450, 
                 **layout_clean, 
-                barmode='group', # Lado a lado
+                barmode='group', 
                 legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(size=11, color="#555"))
             )
 
         else:
-            # === MODO 2: VISÃO COMPARATIVA (CORES + HACHURA + TEXTO DISCRETO) ===
+            # === MODO 2: VISÃO COMPARATIVA ===
             st.markdown("##### 📈 Comparativo de Vendas vs Desfiliações")
             fig1 = go.Figure()
             
@@ -311,7 +330,7 @@ with tab_dash:
             fig1.update_layout(
                 height=450, 
                 **layout_clean, 
-                barmode='group', # Barras lado a lado
+                barmode='group', 
                 legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=11, color="#555"))
             )
             
@@ -424,9 +443,7 @@ with tab_dash:
 
         # --- DADOS DETALHADOS ---
         st.markdown("### 📋 Dados Detalhados")
-        df_sorted = df_viz.sort_values(['franquia', 'data'], ascending=[True, False]).copy()
-        
-        df_show = df_sorted[['franquia', 'mes_exibicao', 'vendas', 'desfiliacao', 'churn_rate', 'qia', 'adimplencia']].copy()
+        df_show = df_viz.sort_values(['franquia', 'data'], ascending=[True, False]).copy()
         df_show['vendas'] = df_show['vendas'].apply(fmt)
         df_show['desfiliacao'] = df_show['desfiliacao'].apply(fmt)
         df_show['qia'] = df_show['qia'].apply(fmt)
